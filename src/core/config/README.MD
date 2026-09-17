@@ -1,6 +1,6 @@
 # Config Module
 
-A type-safe configuration module that wraps NestJS `@nestjs/config` with Joi validation. Environment variables are validated at application startup, ensuring the app fails fast if required config is missing or invalid.
+A type-safe configuration module that wraps NestJS `@nestjs/config` with Zod validation. Environment variables are validated at application startup, ensuring the app fails fast if required config is missing or invalid.
 
 ## Usage
 
@@ -23,26 +23,18 @@ export class MyService {
 
 ## Adding New Options
 
-1. **Define the type** in `config.types.ts`:
+1. **Add validation** in `config.validation.ts`:
 
 ```typescript
-export interface Config {
-  PORT: number;
-  NODE_ENV: 'development' | 'production';
-  DATABASE_URL: string;  // Add new option here
-}
-```
-
-2. **Add validation** in `config.validation.ts`:
-
-```typescript
-export const configValidationSchema = Joi.object<Config>({
-  PORT: Joi.number().port().required(),
-  NODE_ENV: Joi.string().valid('development', 'production').required(),
-  DATABASE_URL: Joi.string().uri().required(),  // Add validation here
+export const configSchema = z.object({
+  PORT: z.coerce.number().int().min(1).max(65535),
+  NODE_ENV: z.enum(['development', 'production']),
+  DATABASE_URL: z.url(),  // Add new option here
 });
 ```
 
-3. **Set the environment variable** in your `.env` file or environment.
+`config.types.ts` infers `Config` from this schema (`z.infer<typeof configSchema>`), so it never needs manual updates.
+
+2. **Set the environment variable** in your `.env` file or environment.
 
 That's it. The new option is now type-safe and validated at startup.

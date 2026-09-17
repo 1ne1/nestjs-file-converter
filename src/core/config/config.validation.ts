@@ -1,36 +1,31 @@
-import Joi from 'joi';
+import { z } from 'zod';
 
-import { Config } from './config.types';
+const booleanEnv = (defaultValue: boolean) =>
+  z
+    .string()
+    .optional()
+    .transform((value) => (value === undefined ? defaultValue : value === 'true'));
 
-export const configValidationSchema = Joi.object<Config>({
-  PORT: Joi.number().port().required(),
-  NODE_ENV: Joi.string().valid('development', 'production').required(),
+const numberEnv = (defaultValue: number) =>
+  z
+    .string()
+    .optional()
+    .transform((value) => (value === undefined ? defaultValue : Number(value)));
 
-  /**
-   * Cookie secret
-   */
-  COOKIE_SECRET: Joi.string().required(),
+export const configSchema = z.object({
+  PORT: z.coerce.number().int().min(1).max(65535),
+  NODE_ENV: z.enum(['development', 'production']),
 
-  /**
-   * Health check options
-   */
-  HEALTH_CHECK_ENABLED: Joi.boolean().optional().default(false),
+  COOKIE_SECRET: z.string().min(1),
 
-  /**
-   * Throttler options
-   */
-  THROTTLE_GLOBAL_TTL: Joi.number().optional().default(10000),
-  THROTTLE_GLOBAL_LIMIT: Joi.number().optional().default(10),
+  HEALTH_CHECK_ENABLED: booleanEnv(false),
 
-  /**
-   * PostgreSQL database options
-   */
-  POSTGRES_HOST: Joi.string().hostname().required(),
-  POSTGRES_PORT: Joi.number().port().required(),
-  POSTGRES_USER: Joi.string().required(),
-  POSTGRES_PASSWORD: Joi.string().required(),
-  POSTGRES_DB: Joi.string().required(),
-  POSTGRES_SYNCHRONIZE: Joi.boolean().optional().default(false),
-  POSTGRES_LOGGING: Joi.boolean().optional().default(false),
-  POSTGRES_MIGRATIONS_RUN: Joi.boolean().optional().default(false),
+  THROTTLE_GLOBAL_TTL: numberEnv(10000),
+  THROTTLE_GLOBAL_LIMIT: numberEnv(10),
+
+  DATABASE_URL: z.url(),
 });
+
+export function validateConfig(config: Record<string, unknown>) {
+  return configSchema.parse(config);
+}

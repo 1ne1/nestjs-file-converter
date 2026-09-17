@@ -2,27 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import compression from '@fastify/compress';
 import fastifyCookie from '@fastify/cookie';
-import { ValidationPipe } from '@nestjs/common';
-import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
 
 import { AppModule } from './core/app/app.module';
 import { ConfigService } from '@/core/config/config.service';
 
 async function bootstrap() {
-  initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
-
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter()
   );
 
   await app.register(compression);
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-    }),
-  );
 
   app.enableCors({
     origin: [
@@ -37,9 +27,10 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+  const cookieSecret = configService.get('COOKIE_SECRET');
 
   await app.register(fastifyCookie, {
-    secret: configService.get('COOKIE_SECRET'),
+    secret: cookieSecret,
   });
 
   const port = configService.get('PORT');
@@ -47,4 +38,4 @@ async function bootstrap() {
   await app.listen(port);
 }
 
-bootstrap();
+void bootstrap();

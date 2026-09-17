@@ -18,43 +18,44 @@ npm run test:e2e     # E2E tests
 ```
 src/
 ├── core/
-│   ├── config/      # App configuration (env variables)
-│   ├── database/    # TypeORM + PostgreSQL connection
+│   ├── config/      # App configuration (env variables, validated with Zod)
+│   ├── database/    # Prisma client + PostgreSQL connection
 │   ├── health/      # Health check endpoints
 │   └── app/         # Root module
-├── database/        # TypeORM CLI data-source and migrations
+├── generated/       # Prisma client output (generated, gitignored)
 ├── modules/         # Feature modules
 └── main.ts          # Entry point
+
+prisma/
+├── schema.prisma    # Data model + generator/datasource config
+└── migrations/      # Prisma migration history
 ```
 
 ## Database
 
-PostgreSQL and TypeORM are already wired in. Use them for new modules — no extra setup.
+PostgreSQL and Prisma are already wired in. Use them for new modules — no extra setup.
 
 - **Local Postgres:** `docker compose up -d` (image and credentials from `.env` / `.env.example`)
-- **Connection:** `DatabaseModule` (`src/core/database`) is imported in `AppModule`
-- **Entities:** any `*.entity.ts` under `src/` is auto-loaded
-- **Repositories:** `TypeOrmModule.forFeature([YourEntity])` in a feature module, then `@InjectRepository(YourEntity)`
-- **Transactions:** `@Transactional()` from `typeorm-transactional` (context is initialized in `main.ts`)
-- **Schema:** migrations in `src/database/migrations/`. `POSTGRES_SYNCHRONIZE` is `false` by default — do not rely on auto-sync
+- **Connection:** `PrismaService` (`src/core/database`) extends `PrismaClient` and is provided by the global `DatabaseModule`. Inject it wherever you need the database.
+- **Connection URL:** read from `DATABASE_URL` via `prisma.config.ts` (CLI) and `ConfigService` (runtime) — Prisma 7 no longer reads a `url` from `schema.prisma`.
+- **Models:** define them in `prisma/schema.prisma`, then run `npm run prisma:generate` to regenerate the client into `src/generated/prisma`.
 
 ```bash
-npm run migration:generate   # Generate from entity changes
-npm run migration:run        # Apply pending migrations
-npm run migration:revert     # Roll back the last migration
-npm run migration:show       # List applied / pending
+npm run prisma:generate   # Regenerate the client after editing schema.prisma
+npm run migrate:dev       # Create + apply a migration in development
+npm run migrate:deploy    # Apply pending migrations (CI/production)
+npm run migrate:reset     # Drop and recreate the dev database
+npm run studio             # Open Prisma Studio
 ```
-
-CLI uses `src/database/data-source.ts`. At runtime, Nest uses the DataSource from `DatabaseModule`. If `POSTGRES_MIGRATIONS_RUN=true`, pending migrations also run on app start.
 
 ## Libraries
 
 | Purpose       | Library                  |
 |---------------|--------------------------|
 | HTTP          | Fastify (`@nestjs/platform-fastify`) |
-| Validation    | Joi                      |
-| ORM           | TypeORM (`@nestjs/typeorm`) |
-| Database      | PostgreSQL (`pg`)        |
+| Validation    | Zod                      |
+| ORM           | Prisma (`@prisma/client`, driver adapter `@prisma/adapter-pg`) |
+| Database      | PostgreSQL (`pg`, via `@prisma/adapter-pg`) |
 
 ## Core Modules
 
