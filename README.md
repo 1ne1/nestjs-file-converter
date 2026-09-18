@@ -21,6 +21,7 @@ src/
 │   ├── config/      # App configuration (env variables, validated with Zod)
 │   ├── database/    # Prisma client + PostgreSQL connection
 │   ├── health/      # Health check endpoints
+│   ├── storage/     # S3-compatible object storage (MinIO locally)
 │   └── app/         # Root module
 ├── generated/       # Prisma client output (generated, gitignored)
 ├── modules/         # Feature modules
@@ -48,6 +49,14 @@ npm run migrate:reset     # Drop and recreate the dev database
 npm run studio             # Open Prisma Studio
 ```
 
+## File Storage
+
+Object storage is behind `StorageService` (`src/core/storage`) — an S3-compatible client (`@aws-sdk/client-s3`) that works against any S3-compatible backend by changing env vars, no code changes.
+
+- **Local:** `docker compose up -d` also starts a MinIO container (S3-compatible, console at `http://localhost:9001`). The configured bucket is created automatically on app startup if it doesn't exist.
+- **Production:** point `STORAGE_ENDPOINT`/`STORAGE_REGION`/`STORAGE_BUCKET`/credentials at a real provider (AWS S3, DigitalOcean Spaces, Cloudflare R2, ...).
+- **Usage:** inject `StorageService` and call `upload(key, body, contentType)`, `download(key)` (returns a `Readable`), `delete(key)`.
+
 ## Libraries
 
 | Purpose       | Library                  |
@@ -56,6 +65,7 @@ npm run studio             # Open Prisma Studio
 | Validation    | Zod                      |
 | ORM           | Prisma (`@prisma/client`, driver adapter `@prisma/adapter-pg`) |
 | Database      | PostgreSQL (`pg`, via `@prisma/adapter-pg`) |
+| File storage  | S3-compatible (`@aws-sdk/client-s3`), MinIO locally |
 
 ## Core Modules
 
@@ -64,6 +74,7 @@ npm run studio             # Open Prisma Studio
 | Configuration | `ConfigModule`  |
 | Database      | `DatabaseModule` |
 | Health Check  | `HealthModule`  |
+| File Storage  | `StorageModule` |
 
 ## Adding a Module
 

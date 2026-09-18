@@ -26,6 +26,13 @@ export const configSchema = z.object({
   THROTTLE_GLOBAL_LIMIT: numberEnv(10),
 
   DATABASE_URL: z.url(),
+
+  STORAGE_ENDPOINT: z.url(),
+  STORAGE_REGION: z.string().min(1),
+  STORAGE_BUCKET: z.string().min(1),
+  STORAGE_ACCESS_KEY_ID: z.string().min(1),
+  STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
+  STORAGE_FORCE_PATH_STYLE: booleanEnv(true),
 });
 
 export function validateConfig(config: Record<string, unknown>) {

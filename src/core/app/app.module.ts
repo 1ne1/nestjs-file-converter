@@ -3,13 +3,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@/core/config/config.module';
 import { DatabaseModule } from '@/core/database/database.module';
 import { HealthModule } from '@/core/health/health.module';
+import { StorageModule } from '@/core/storage/storage.module';
 import { ThrottlerModule } from '@/core/throttler/throttler.module';
-
-/**
- *
- * Application modules
- *
- */
 import { UsersModule } from '@/modules/users/users.module';
 
 @Module({
@@ -17,12 +12,8 @@ import { UsersModule } from '@/modules/users/users.module';
     ConfigModule,
     DatabaseModule,
     HealthModule,
+    StorageModule,
     ThrottlerModule,
-    /**
-     *
-     * Application modules
-     *
-     */
     UsersModule,
   ],
 })
