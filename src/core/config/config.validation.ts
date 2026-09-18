@@ -4,7 +4,9 @@ const booleanEnv = (defaultValue: boolean) =>
   z
     .string()
     .optional()
-    .transform((value) => (value === undefined ? defaultValue : value === 'true'));
+    .transform((value) =>
+      value === undefined ? defaultValue : value === 'true',
+    );
 
 const numberEnv = (defaultValue: number) =>
   z
