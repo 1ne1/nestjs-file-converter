@@ -57,6 +57,19 @@ Object storage is behind `StorageService` (`src/core/storage`) — an S3-compati
 - **Production:** point `STORAGE_ENDPOINT`/`STORAGE_REGION`/`STORAGE_BUCKET`/credentials at a real provider (AWS S3, DigitalOcean Spaces, Cloudflare R2, ...).
 - **Usage:** inject `StorageService` and call `upload(key, body, contentType)`, `download(key)` (returns a `Readable`), `delete(key)`.
 
+## Authentication
+
+JWT-based, cookie-only (no tokens in response bodies). `AuthModule` (`src/modules/auth`) exposes:
+
+- `POST /auth/register`, `POST /auth/login` — issue `access_token` (15m) + `refresh_token` (30d) as `httpOnly` cookies. Passwords are hashed with `argon2id`.
+- `POST /auth/refresh` — rotates both cookies from a valid refresh token.
+- `POST /auth/logout` — clears both cookies. Refresh tokens aren't stored server-side (per spec), so this is the only way to end a session early.
+- `GET /auth/me` — example of a route guarded by `JwtAuthGuard`; apply it to any route that needs an authenticated user (`req.user` is `{ id, email }`).
+
+Email/OTP confirmation flows are a deliberately separate, not-yet-built follow-up — registration/login are unconditional for now.
+
+Request bodies are validated with Zod via `ZodValidationPipe` (`src/core/validation`) — apply it per-param: `@Body(new ZodValidationPipe(someSchema)) dto: SomeDto`.
+
 ## Libraries
 
 | Purpose       | Library                  |
@@ -66,6 +79,7 @@ Object storage is behind `StorageService` (`src/core/storage`) — an S3-compati
 | ORM           | Prisma (`@prisma/client`, driver adapter `@prisma/adapter-pg`) |
 | Database      | PostgreSQL (`pg`, via `@prisma/adapter-pg`) |
 | File storage  | S3-compatible (`@aws-sdk/client-s3`), MinIO locally |
+| Auth          | `@nestjs/jwt` + `argon2` (password hashing) |
 
 ## Core Modules
 
@@ -75,6 +89,7 @@ Object storage is behind `StorageService` (`src/core/storage`) — an S3-compati
 | Database      | `DatabaseModule` |
 | Health Check  | `HealthModule`  |
 | File Storage  | `StorageModule` |
+| Authentication | `AuthModule` (`src/modules/auth`) |
 
 ## Adding a Module
 

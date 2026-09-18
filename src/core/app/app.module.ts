@@ -5,6 +5,7 @@ import { DatabaseModule } from '@/core/database/database.module';
 import { HealthModule } from '@/core/health/health.module';
 import { StorageModule } from '@/core/storage/storage.module';
 import { ThrottlerModule } from '@/core/throttler/throttler.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 import { UsersModule } from '@/modules/users/users.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { UsersModule } from '@/modules/users/users.module';
     HealthModule,
     StorageModule,
     ThrottlerModule,
+    AuthModule,
     UsersModule,
   ],
 })

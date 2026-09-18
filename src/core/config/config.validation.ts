@@ -33,6 +33,9 @@ export const configSchema = z.object({
   STORAGE_ACCESS_KEY_ID: z.string().min(1),
   STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
   STORAGE_FORCE_PATH_STYLE: booleanEnv(true),
+
+  JWT_ACCESS_SECRET: z.string().min(1),
+  JWT_REFRESH_SECRET: z.string().min(1),
 });
 
 export function validateConfig(config: Record<string, unknown>) {
