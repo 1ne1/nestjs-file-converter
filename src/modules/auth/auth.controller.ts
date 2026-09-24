@@ -11,6 +11,8 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ConfigService } from '@/core/config/config.service';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
+import { PermissionGuard } from '@/modules/rbac/permission.guard';
+import { RequirePermission } from '@/modules/rbac/require-permission.decorator';
 
 import { JwtAuthGuard } from './auth.guard';
 import type { AuthenticatedRequest } from './auth.guard';
@@ -76,6 +78,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: AuthenticatedRequest) {
     return req.user;
+  }
+
+  @Get('admin-ping')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequirePermission('rbac.demo')
+  adminPing() {
+    return { ok: true };
   }
 
   private setAuthCookies(res: FastifyReply, tokens: AuthTokens) {
