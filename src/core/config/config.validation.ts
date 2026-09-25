@@ -36,6 +36,13 @@ export const configSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(1),
   JWT_REFRESH_SECRET: z.string().min(1),
+
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535),
+  SMTP_SECURE: booleanEnv(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.email(),
 });
 
 export function validateConfig(config: Record<string, unknown>) {

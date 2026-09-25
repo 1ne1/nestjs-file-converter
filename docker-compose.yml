@@ -38,6 +38,13 @@ services:
       timeout: 5s
       retries: 5
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mnt-mailhog
+    ports:
+      - "${SMTP_PORT}:1025"
+      - "${SMTP_WEB_PORT}:8025"
+
 volumes:
   postgres_data:
     driver: local
