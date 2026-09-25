@@ -4,15 +4,16 @@ import {
   Delete,
   ForbiddenException,
   Get,
-  HttpCode,
   NotFoundException,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { FastifyReply } from 'fastify';
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
@@ -186,16 +187,19 @@ export class UsersController {
   }
 
   @Delete(':userId')
-  @HttpCode(204)
   @UseGuards(JwtAuthGuard)
   async remove(
     @Param('userId') userId: string,
     @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
   ) {
     if (req.user.id === userId) {
-      throw new ForbiddenException(
-        'Self-service deletion requires email confirmation, not yet available',
+      const { challengeId } = await this.usersService.initiateSelfDelete(
+        userId,
+        req.user.email,
       );
+
+      return { requiresConfirmation: true, challengeId };
     }
 
     if (!(await this.rbac.hasPermission(req.user.id, DELETE_PERMISSION))) {
@@ -208,5 +212,57 @@ export class UsersController {
     }
 
     await this.usersService.remove(userId);
+    res.status(204);
+  }
+
+  @Post(':userId/delete/confirm')
+  @UseGuards(JwtAuthGuard)
+  async confirmDeleteOtp(
+    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(confirmChallengeOtpSchema))
+    dto: ConfirmChallengeOtpDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    if (req.user.id !== userId) {
+      throw new ForbiddenException();
+    }
+
+    await this.usersService.confirmSelfDelete(
+      userId,
+      dto.challengeId,
+      dto.code,
+    );
+    this.clearAuthCookies(res);
+
+    return { success: true };
+  }
+
+  @Get(':userId/delete/confirm')
+  @UseGuards(JwtAuthGuard)
+  async confirmDeleteLink(
+    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(confirmChallengeLinkSchema))
+    query: ConfirmChallengeLinkDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    if (req.user.id !== userId) {
+      throw new ForbiddenException();
+    }
+
+    await this.usersService.confirmSelfDelete(
+      userId,
+      query.challengeId,
+      query.token,
+    );
+    this.clearAuthCookies(res);
+
+    return { success: true };
+  }
+
+  private clearAuthCookies(res: FastifyReply): void {
+    res.clearCookie('access_token', { path: '/' });
+    res.clearCookie('refresh_token', { path: '/' });
   }
 }

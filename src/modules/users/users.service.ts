@@ -137,6 +137,43 @@ export class UsersService {
     return this.update(userId, { email: challenge.email });
   }
 
+  async initiateSelfDelete(
+    userId: string,
+    email: string,
+  ): Promise<{ challengeId: string }> {
+    const { challengeId, secret } = await this.challenges.create({
+      purpose: ChallengePurpose.SELF_DELETE,
+      method: ChallengeMethod.OTP,
+      email,
+      userId,
+    });
+
+    await this.mail.sendMail({
+      to: email,
+      subject: 'Confirm account deletion',
+      text: `Your account deletion confirmation code is ${secret}. It expires in 10 minutes. If you did not request this, ignore this email.`,
+    });
+
+    return { challengeId };
+  }
+
+  async confirmSelfDelete(
+    userId: string,
+    challengeId: string,
+    secret: string,
+  ): Promise<void> {
+    const challenge = await this.challenges.verify(challengeId, secret);
+
+    if (
+      challenge.purpose !== ChallengePurpose.SELF_DELETE ||
+      challenge.userId !== userId
+    ) {
+      throw new BadRequestException('Invalid or expired code');
+    }
+
+    await this.remove(userId);
+  }
+
   async remove(id: string): Promise<void> {
     const passwordHash = await argon2.hash(randomUUID());
 
