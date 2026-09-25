@@ -13,20 +13,20 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ConfigService } from '@/core/config/config.service';
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
+import {
+  confirmChallengeLinkSchema,
+  confirmChallengeOtpSchema,
+} from '@/core/challenge/dto/confirm-challenge.dto';
+import type {
+  ConfirmChallengeLinkDto,
+  ConfirmChallengeOtpDto,
+} from '@/core/challenge/dto/confirm-challenge.dto';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
 import { PermissionGuard } from '@/modules/rbac/permission.guard';
 import { RequirePermission } from '@/modules/rbac/require-permission.decorator';
 
 import { AuthService } from './auth.service';
 import type { AuthTokens } from './auth.service';
-import {
-  confirmRegistrationLinkSchema,
-  confirmRegistrationOtpSchema,
-} from './dto/confirm-registration.dto';
-import type {
-  ConfirmRegistrationLinkDto,
-  ConfirmRegistrationOtpDto,
-} from './dto/confirm-registration.dto';
 import { loginSchema } from './dto/login.dto';
 import type { LoginDto } from './dto/login.dto';
 import { registerSchema } from './dto/register.dto';
@@ -60,8 +60,8 @@ export class AuthController {
 
   @Post('register/confirm')
   async confirmRegistrationOtp(
-    @Body(new ZodValidationPipe(confirmRegistrationOtpSchema))
-    dto: ConfirmRegistrationOtpDto,
+    @Body(new ZodValidationPipe(confirmChallengeOtpSchema))
+    dto: ConfirmChallengeOtpDto,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const { user, tokens } = await this.authService.confirmRegistration(
@@ -75,8 +75,8 @@ export class AuthController {
 
   @Get('register/confirm')
   async confirmRegistrationLink(
-    @Query(new ZodValidationPipe(confirmRegistrationLinkSchema))
-    query: ConfirmRegistrationLinkDto,
+    @Query(new ZodValidationPipe(confirmChallengeLinkSchema))
+    query: ConfirmChallengeLinkDto,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const { user, tokens } = await this.authService.confirmRegistration(
@@ -93,7 +93,42 @@ export class AuthController {
     @Body(new ZodValidationPipe(loginSchema)) dto: LoginDto,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const { user, tokens } = await this.authService.login(dto);
+    const result = await this.authService.login(dto);
+
+    if (result.requiresConfirmation) {
+      return { requiresConfirmation: true, challengeId: result.challengeId };
+    }
+
+    this.setAuthCookies(res, result.tokens);
+
+    return { id: result.user.id, email: result.user.email };
+  }
+
+  @Post('login/confirm')
+  async confirmLoginOtp(
+    @Body(new ZodValidationPipe(confirmChallengeOtpSchema))
+    dto: ConfirmChallengeOtpDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const { user, tokens } = await this.authService.confirmLogin(
+      dto.challengeId,
+      dto.code,
+    );
+    this.setAuthCookies(res, tokens);
+
+    return { id: user.id, email: user.email };
+  }
+
+  @Get('login/confirm')
+  async confirmLoginLink(
+    @Query(new ZodValidationPipe(confirmChallengeLinkSchema))
+    query: ConfirmChallengeLinkDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const { user, tokens } = await this.authService.confirmLogin(
+      query.challengeId,
+      query.token,
+    );
     this.setAuthCookies(res, tokens);
 
     return { id: user.id, email: user.email };

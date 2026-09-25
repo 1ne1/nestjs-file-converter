@@ -30,6 +30,10 @@ export type RegisterResult =
   | { requiresConfirmation: false; user: User; tokens: AuthTokens }
   | { requiresConfirmation: true; challengeId: string };
 
+export type LoginResult =
+  | { requiresConfirmation: false; user: User; tokens: AuthTokens }
+  | { requiresConfirmation: true; challengeId: string };
+
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '30d';
 
@@ -124,25 +128,19 @@ export class AuthService {
     challengeId: string,
     secret: string,
   ): Promise<void> {
-    if (method === ChallengeMethod.OTP) {
-      await this.mail.sendMail({
-        to: email,
-        subject: 'Confirm your registration',
-        text: `Your confirmation code is ${secret}. It expires in 10 minutes.`,
-      });
-      return;
-    }
-
-    const link = `${this.config.get('APP_BASE_URL')}/auth/register/confirm?challengeId=${challengeId}&token=${secret}`;
-
-    await this.mail.sendMail({
+    await this.sendChallengeEmail({
       to: email,
+      method,
+      challengeId,
+      secret,
       subject: 'Confirm your registration',
-      text: `Click to confirm your registration: ${link}`,
+      otpText: (code) =>
+        `Your confirmation code is ${code}. It expires in 10 minutes.`,
+      linkPath: '/auth/register/confirm',
     });
   }
 
-  async login(dto: LoginDto): Promise<{ user: User; tokens: AuthTokens }> {
+  async login(dto: LoginDto): Promise<LoginResult> {
     const user = await this.users.findByEmail(dto.email);
 
     if (!user || !(await argon2.verify(user.passwordHash, dto.password))) {
@@ -153,7 +151,83 @@ export class AuthService {
       throw new UnauthorizedException('Account is blocked');
     }
 
+    if (!this.config.get('LOGIN_EMAIL_CONFIRMATION_ENABLED')) {
+      return {
+        requiresConfirmation: false,
+        user,
+        tokens: this.issueTokens(user),
+      };
+    }
+
+    const method = this.config.get(
+      'LOGIN_CONFIRMATION_METHOD',
+    ) as ChallengeMethod;
+
+    const { challengeId, secret } = await this.challenges.create({
+      purpose: ChallengePurpose.LOGIN,
+      method,
+      email: user.email,
+      userId: user.id,
+    });
+
+    await this.sendChallengeEmail({
+      to: user.email,
+      method,
+      challengeId,
+      secret,
+      subject: 'Confirm your login',
+      otpText: (code) =>
+        `Your login confirmation code is ${code}. It expires in 10 minutes.`,
+      linkPath: '/auth/login/confirm',
+    });
+
+    return { requiresConfirmation: true, challengeId };
+  }
+
+  async confirmLogin(
+    challengeId: string,
+    secret: string,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const challenge = await this.challenges.verify(challengeId, secret);
+
+    if (challenge.purpose !== ChallengePurpose.LOGIN || !challenge.userId) {
+      throw new BadRequestException('Invalid or expired code');
+    }
+
+    const user = await this.users.findById(challenge.userId);
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException();
+    }
+
     return { user, tokens: this.issueTokens(user) };
+  }
+
+  private async sendChallengeEmail(params: {
+    to: string;
+    method: ChallengeMethod;
+    challengeId: string;
+    secret: string;
+    subject: string;
+    otpText: (code: string) => string;
+    linkPath: string;
+  }): Promise<void> {
+    if (params.method === ChallengeMethod.OTP) {
+      await this.mail.sendMail({
+        to: params.to,
+        subject: params.subject,
+        text: params.otpText(params.secret),
+      });
+      return;
+    }
+
+    const link = `${this.config.get('APP_BASE_URL')}${params.linkPath}?challengeId=${params.challengeId}&token=${params.secret}`;
+
+    await this.mail.sendMail({
+      to: params.to,
+      subject: params.subject,
+      text: `Click to confirm: ${link}`,
+    });
   }
 
   async refresh(refreshToken: string | undefined): Promise<AuthTokens> {

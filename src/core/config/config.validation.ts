@@ -50,6 +50,11 @@ export const configSchema = z.object({
     .enum(['OTP', 'MAGIC_LINK'])
     .optional()
     .transform((value) => value ?? 'OTP'),
+  LOGIN_EMAIL_CONFIRMATION_ENABLED: booleanEnv(false),
+  LOGIN_CONFIRMATION_METHOD: z
+    .enum(['OTP', 'MAGIC_LINK'])
+    .optional()
+    .transform((value) => value ?? 'OTP'),
 });
 
 export function validateConfig(config: Record<string, unknown>) {
