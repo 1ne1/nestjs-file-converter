@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -18,6 +19,14 @@ import { RequirePermission } from '@/modules/rbac/require-permission.decorator';
 
 import { AuthService } from './auth.service';
 import type { AuthTokens } from './auth.service';
+import {
+  confirmRegistrationLinkSchema,
+  confirmRegistrationOtpSchema,
+} from './dto/confirm-registration.dto';
+import type {
+  ConfirmRegistrationLinkDto,
+  ConfirmRegistrationOtpDto,
+} from './dto/confirm-registration.dto';
 import { loginSchema } from './dto/login.dto';
 import type { LoginDto } from './dto/login.dto';
 import { registerSchema } from './dto/register.dto';
@@ -38,7 +47,42 @@ export class AuthController {
     @Body(new ZodValidationPipe(registerSchema)) dto: RegisterDto,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
-    const { user, tokens } = await this.authService.register(dto);
+    const result = await this.authService.register(dto);
+
+    if (result.requiresConfirmation) {
+      return { requiresConfirmation: true, challengeId: result.challengeId };
+    }
+
+    this.setAuthCookies(res, result.tokens);
+
+    return { id: result.user.id, email: result.user.email };
+  }
+
+  @Post('register/confirm')
+  async confirmRegistrationOtp(
+    @Body(new ZodValidationPipe(confirmRegistrationOtpSchema))
+    dto: ConfirmRegistrationOtpDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const { user, tokens } = await this.authService.confirmRegistration(
+      dto.challengeId,
+      dto.code,
+    );
+    this.setAuthCookies(res, tokens);
+
+    return { id: user.id, email: user.email };
+  }
+
+  @Get('register/confirm')
+  async confirmRegistrationLink(
+    @Query(new ZodValidationPipe(confirmRegistrationLinkSchema))
+    query: ConfirmRegistrationLinkDto,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
+    const { user, tokens } = await this.authService.confirmRegistration(
+      query.challengeId,
+      query.token,
+    );
     this.setAuthCookies(res, tokens);
 
     return { id: user.id, email: user.email };

@@ -43,6 +43,13 @@ export const configSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.email(),
+
+  APP_BASE_URL: z.url(),
+  REGISTRATION_EMAIL_CONFIRMATION_ENABLED: booleanEnv(false),
+  REGISTRATION_CONFIRMATION_METHOD: z
+    .enum(['OTP', 'MAGIC_LINK'])
+    .optional()
+    .transform((value) => value ?? 'OTP'),
 });
 
 export function validateConfig(config: Record<string, unknown>) {
