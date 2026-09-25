@@ -7,8 +7,16 @@ import {
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 
+import { ChallengeService } from '@/core/challenge/challenge.service';
 import { PrismaService } from '@/core/database/prisma.service';
-import { Prisma, User, UserStatus } from '@/generated/prisma/client';
+import { MailService } from '@/core/mail/mail.service';
+import {
+  ChallengeMethod,
+  ChallengePurpose,
+  Prisma,
+  User,
+  UserStatus,
+} from '@/generated/prisma/client';
 
 export interface UpdateUserFields {
   name?: string;
@@ -55,7 +63,11 @@ export interface ListUsersResult {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly challenges: ChallengeService,
+    private readonly mail: MailService,
+  ) {}
 
   findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
@@ -81,6 +93,48 @@ export class UsersService {
       }
       throw error;
     }
+  }
+
+  async initiateEmailChange(
+    userId: string,
+    newEmail: string,
+  ): Promise<{ challengeId: string }> {
+    const existing = await this.findByEmail(newEmail);
+    if (existing) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const { challengeId, secret } = await this.challenges.create({
+      purpose: ChallengePurpose.EMAIL_CHANGE,
+      method: ChallengeMethod.OTP,
+      email: newEmail,
+      userId,
+    });
+
+    await this.mail.sendMail({
+      to: newEmail,
+      subject: 'Confirm your new email address',
+      text: `Your confirmation code is ${secret}. It expires in 10 minutes.`,
+    });
+
+    return { challengeId };
+  }
+
+  async confirmEmailChange(
+    userId: string,
+    challengeId: string,
+    secret: string,
+  ): Promise<User> {
+    const challenge = await this.challenges.verify(challengeId, secret);
+
+    if (
+      challenge.purpose !== ChallengePurpose.EMAIL_CHANGE ||
+      challenge.userId !== userId
+    ) {
+      throw new BadRequestException('Invalid or expired code');
+    }
+
+    return this.update(userId, { email: challenge.email });
   }
 
   async remove(id: string): Promise<void> {

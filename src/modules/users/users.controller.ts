@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -15,9 +16,19 @@ import {
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
+import {
+  confirmChallengeLinkSchema,
+  confirmChallengeOtpSchema,
+} from '@/core/challenge/dto/confirm-challenge.dto';
+import type {
+  ConfirmChallengeLinkDto,
+  ConfirmChallengeOtpDto,
+} from '@/core/challenge/dto/confirm-challenge.dto';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
 import { RbacService } from '@/modules/rbac/rbac.service';
 
+import { initiateEmailChangeSchema } from './dto/initiate-email-change.dto';
+import type { InitiateEmailChangeDto } from './dto/initiate-email-change.dto';
 import { listUsersQuerySchema } from './dto/list-users.dto';
 import type { ListUsersQuery } from './dto/list-users.dto';
 import { updateUserSchema } from './dto/update-user.dto';
@@ -110,6 +121,68 @@ export class UsersController {
     return isSelf
       ? this.usersService.toSelfProfile(updated)
       : this.usersService.toPublicProfile(updated);
+  }
+
+  @Post(':userId/email-change')
+  @UseGuards(JwtAuthGuard)
+  async initiateEmailChange(
+    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(initiateEmailChangeSchema))
+    dto: InitiateEmailChangeDto,
+  ) {
+    if (req.user.id !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const { challengeId } = await this.usersService.initiateEmailChange(
+      userId,
+      dto.newEmail,
+    );
+
+    return { requiresConfirmation: true, challengeId };
+  }
+
+  @Post(':userId/email-change/confirm')
+  @UseGuards(JwtAuthGuard)
+  async confirmEmailChangeOtp(
+    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(confirmChallengeOtpSchema))
+    dto: ConfirmChallengeOtpDto,
+  ) {
+    if (req.user.id !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const user = await this.usersService.confirmEmailChange(
+      userId,
+      dto.challengeId,
+      dto.code,
+    );
+
+    return this.usersService.toSelfProfile(user);
+  }
+
+  @Get(':userId/email-change/confirm')
+  @UseGuards(JwtAuthGuard)
+  async confirmEmailChangeLink(
+    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(confirmChallengeLinkSchema))
+    query: ConfirmChallengeLinkDto,
+  ) {
+    if (req.user.id !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const user = await this.usersService.confirmEmailChange(
+      userId,
+      query.challengeId,
+      query.token,
+    );
+
+    return this.usersService.toSelfProfile(user);
   }
 
   @Delete(':userId')
