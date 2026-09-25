@@ -59,3 +59,32 @@ model UserRole {
 
   @@id([userId, roleId])
 }
+
+enum ChallengePurpose {
+  REGISTRATION
+  LOGIN
+  EMAIL_CHANGE
+  SELF_DELETE
+}
+
+enum ChallengeMethod {
+  OTP
+  MAGIC_LINK
+}
+
+model EmailChallenge {
+  id          String           @id @default(uuid())
+  purpose     ChallengePurpose
+  method      ChallengeMethod
+  email       String
+  secretHash  String
+  attempts    Int              @default(0)
+  maxAttempts Int              @default(5)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  userId      String?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+
+  @@index([email, purpose])
+}
