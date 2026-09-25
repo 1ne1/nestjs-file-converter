@@ -10,12 +10,12 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ConfigService } from '@/core/config/config.service';
+import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
 import { PermissionGuard } from '@/modules/rbac/permission.guard';
 import { RequirePermission } from '@/modules/rbac/require-permission.decorator';
 
-import { JwtAuthGuard } from './auth.guard';
-import type { AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';
 import type { AuthTokens } from './auth.service';
 import { loginSchema } from './dto/login.dto';
