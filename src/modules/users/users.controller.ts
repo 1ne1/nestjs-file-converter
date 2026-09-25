@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Patch,
@@ -25,6 +27,7 @@ import { UsersService } from './users.service';
 const READ_PERMISSION = 'users.read';
 const UPDATE_PERMISSION = 'users.update';
 const LIST_PERMISSION = 'users.list';
+const DELETE_PERMISSION = 'users.delete';
 const SELF_UPDATABLE_FIELDS = ['name'] as const;
 const ADMIN_UPDATABLE_FIELDS = ['name', 'email', 'status'] as const;
 
@@ -107,5 +110,30 @@ export class UsersController {
     return isSelf
       ? this.usersService.toSelfProfile(updated)
       : this.usersService.toPublicProfile(updated);
+  }
+
+  @Delete(':userId')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  async remove(
+    @Param('userId') userId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    if (req.user.id === userId) {
+      throw new ForbiddenException(
+        'Self-service deletion requires email confirmation, not yet available',
+      );
+    }
+
+    if (!(await this.rbac.hasPermission(req.user.id, DELETE_PERMISSION))) {
+      throw new ForbiddenException();
+    }
+
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException();
+    }
+
+    await this.usersService.remove(userId);
   }
 }

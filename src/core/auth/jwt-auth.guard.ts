@@ -46,7 +46,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const user = await this.users.findById(payload.sub);
 
-    if (!user || user.status === UserStatus.BLOCKED) {
+    if (!user || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException();
     }
 

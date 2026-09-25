@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   BadRequestException,
   ConflictException,
   Injectable,
 } from '@nestjs/common';
+import * as argon2 from 'argon2';
 
 import { PrismaService } from '@/core/database/prisma.service';
 import { Prisma, User, UserStatus } from '@/generated/prisma/client';
@@ -78,6 +81,21 @@ export class UsersService {
       }
       throw error;
     }
+  }
+
+  async remove(id: string): Promise<void> {
+    const passwordHash = await argon2.hash(randomUUID());
+
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        email: `deleted-${id}@deleted.local`,
+        name: null,
+        passwordHash,
+        status: UserStatus.DELETED,
+      },
+    });
+    await this.prisma.userRole.deleteMany({ where: { userId: id } });
   }
 
   toSelfProfile(user: User): SelfProfile {

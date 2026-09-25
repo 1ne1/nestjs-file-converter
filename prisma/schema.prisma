@@ -21,6 +21,7 @@ model User {
 enum UserStatus {
   ACTIVE
   BLOCKED
+  DELETED
 }
 
 model Role {
