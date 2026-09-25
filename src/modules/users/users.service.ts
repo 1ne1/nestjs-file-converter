@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 
 import { PrismaService } from '@/core/database/prisma.service';
 import { Prisma, User, UserStatus } from '@/generated/prisma/client';
@@ -22,6 +26,28 @@ export interface PublicProfile {
   id: string;
   email: string;
   status: UserStatus;
+}
+
+export interface ListItem {
+  id: string;
+  email: string;
+  name: string | null;
+  status: UserStatus;
+  createdAt: Date;
+}
+
+export interface ListUsersParams {
+  cursor?: string;
+  limit: number;
+  q?: string;
+  status?: UserStatus;
+  sort: 'createdAt' | 'email';
+  order: 'asc' | 'desc';
+}
+
+export interface ListUsersResult {
+  items: ListItem[];
+  nextCursor: string | null;
 }
 
 @Injectable()
@@ -67,5 +93,57 @@ export class UsersService {
 
   toPublicProfile(user: User): PublicProfile {
     return { id: user.id, email: user.email, status: user.status };
+  }
+
+  async list(params: ListUsersParams): Promise<ListUsersResult> {
+    const { cursor, limit, q, status, sort, order } = params;
+
+    const where: Prisma.UserWhereInput = {
+      ...(status ? { status } : {}),
+      ...(q
+        ? {
+            OR: [
+              { email: { contains: q, mode: 'insensitive' } },
+              { name: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    let users: User[];
+    try {
+      users = await this.prisma.user.findMany({
+        where,
+        orderBy: { [sort]: order },
+        take: limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new BadRequestException('Invalid cursor');
+      }
+      throw error;
+    }
+
+    const hasMore = users.length > limit;
+    const items = hasMore ? users.slice(0, limit) : users;
+
+    return {
+      items: items.map((user) => this.toListItem(user)),
+      nextCursor: hasMore ? items[items.length - 1].id : null,
+    };
+  }
+
+  private toListItem(user: User): ListItem {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      status: user.status,
+      createdAt: user.createdAt,
+    };
   }
 }

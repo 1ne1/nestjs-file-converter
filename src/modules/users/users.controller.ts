@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -15,12 +16,15 @@ import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
 import { RbacService } from '@/modules/rbac/rbac.service';
 
+import { listUsersQuerySchema } from './dto/list-users.dto';
+import type { ListUsersQuery } from './dto/list-users.dto';
 import { updateUserSchema } from './dto/update-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
 const READ_PERMISSION = 'users.read';
 const UPDATE_PERMISSION = 'users.update';
+const LIST_PERMISSION = 'users.list';
 const SELF_UPDATABLE_FIELDS = ['name'] as const;
 const ADMIN_UPDATABLE_FIELDS = ['name', 'email', 'status'] as const;
 
@@ -30,6 +34,19 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly rbac: RbacService,
   ) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async list(
+    @Req() req: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(listUsersQuerySchema)) query: ListUsersQuery,
+  ) {
+    if (!(await this.rbac.hasPermission(req.user.id, LIST_PERMISSION))) {
+      throw new ForbiddenException();
+    }
+
+    return this.usersService.list(query);
+  }
 
   @Get(':userId')
   @UseGuards(JwtAuthGuard)
