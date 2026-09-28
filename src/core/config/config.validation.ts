@@ -61,6 +61,14 @@ export const configSchema = z.object({
   CONVERT_MAX_SIZE_JSON_BYTES: numberEnv(5 * 1024 * 1024),
   CONVERT_MAX_SIZE_XML_BYTES: numberEnv(5 * 1024 * 1024),
   CONVERT_MAX_SIZE_YAML_BYTES: numberEnv(5 * 1024 * 1024),
+
+  IMAGE_MAX_SIZE_PNG_BYTES: numberEnv(5 * 1024 * 1024),
+  IMAGE_MAX_SIZE_JPEG_BYTES: numberEnv(5 * 1024 * 1024),
+  IMAGE_MAX_SIZE_SVG_BYTES: numberEnv(2 * 1024 * 1024),
+  IMAGE_MAX_RASTER_WIDTH: numberEnv(4096),
+  IMAGE_MAX_RASTER_HEIGHT: numberEnv(4096),
+  IMAGE_DEFAULT_RASTER_WIDTH: numberEnv(800),
+  IMAGE_DEFAULT_RASTER_HEIGHT: numberEnv(600),
 });
 
 export function validateConfig(config: Record<string, unknown>) {

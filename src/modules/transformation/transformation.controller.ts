@@ -12,6 +12,10 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
 import { ConfigService } from '@/core/config/config.service';
+import {
+  isFileTooLargeError,
+  parseRequiredMultipartField,
+} from '@/core/http/multipart-field';
 
 import { targetFormatSchema } from './dto/convert.dto';
 import { FormatRegistryService } from './formats/format-registry.service';
@@ -74,24 +78,11 @@ export class TransformationController {
       throw error;
     }
 
-    const targetFormatField = file.fields.targetFormat;
-    const targetFormatEntry = Array.isArray(targetFormatField)
-      ? targetFormatField[0]
-      : targetFormatField;
-
-    if (!targetFormatEntry || targetFormatEntry.type !== 'field') {
-      throw new BadRequestException('targetFormat is required');
-    }
-
-    const targetFormatResult = targetFormatSchema.safeParse(
-      targetFormatEntry.value,
+    const targetFormat = parseRequiredMultipartField(
+      file.fields.targetFormat,
+      targetFormatSchema,
+      'targetFormat must be one of: csv, json, xml, yaml',
     );
-    if (!targetFormatResult.success) {
-      throw new BadRequestException(
-        'targetFormat must be one of: csv, json, xml, yaml',
-      );
-    }
-    const targetFormat = targetFormatResult.data;
 
     const maxSize = this.config.get(SIZE_LIMIT_CONFIG_KEYS[sourceFormat]);
     if (buffer.length > maxSize) {
@@ -110,13 +101,4 @@ export class TransformationController {
 
     return output;
   }
-}
-
-function isFileTooLargeError(error: unknown): error is { code: string } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code: unknown }).code === 'FST_REQ_FILE_TOO_LARGE'
-  );
 }

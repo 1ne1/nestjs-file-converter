@@ -9,6 +9,7 @@ import { MailModule } from '@/core/mail/mail.module';
 import { StorageModule } from '@/core/storage/storage.module';
 import { ThrottlerModule } from '@/core/throttler/throttler.module';
 import { AuthModule } from '@/modules/auth/auth.module';
+import { ImageTransformationModule } from '@/modules/image-transformation/image-transformation.module';
 import { RbacModule } from '@/modules/rbac/rbac.module';
 import { TransformationModule } from '@/modules/transformation/transformation.module';
 import { UsersModule } from '@/modules/users/users.module';
@@ -27,6 +28,7 @@ import { UsersModule } from '@/modules/users/users.module';
     AuthModule,
     UsersModule,
     TransformationModule,
+    ImageTransformationModule,
   ],
 })
 export class AppModule {}
