@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 
@@ -63,6 +64,8 @@ export interface ListUsersResult {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly challenges: ChallengeService,
@@ -83,7 +86,11 @@ export class UsersService {
 
   async update(id: string, data: UpdateUserFields): Promise<User> {
     try {
-      return await this.prisma.user.update({ where: { id }, data });
+      const user = await this.prisma.user.update({ where: { id }, data });
+      this.logger.log(
+        `Updated fields [${Object.keys(data).join(', ')}] on user ${id}`,
+      );
+      return user;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -187,6 +194,7 @@ export class UsersService {
       },
     });
     await this.prisma.userRole.deleteMany({ where: { userId: id } });
+    this.logger.log(`Deleted (anonymized) user ${id}`);
   }
 
   toSelfProfile(user: User): SelfProfile {

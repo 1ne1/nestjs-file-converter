@@ -39,17 +39,23 @@ model Permission {
   id          String           @id @default(uuid())
   name        String           @unique
   description String?
+  actions     String[]        @default([])
   createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   roles       RolePermission[]
 }
 
 model RolePermission {
+  id           String     @id @default(uuid())
   roleId       String
   permissionId String
+  actions      String[]   @default([])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
-  @@id([roleId, permissionId])
+  @@unique([roleId, permissionId])
 }
 
 model UserRole {

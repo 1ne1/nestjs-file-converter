@@ -8,6 +8,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ConfigService } from '@/core/config/config.service';
@@ -21,9 +22,8 @@ import type {
   ConfirmChallengeLinkDto,
   ConfirmChallengeOtpDto,
 } from '@/core/challenge/dto/confirm-challenge.dto';
+import { SENSITIVE_THROTTLE } from '@/core/throttler/sensitive-throttle';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
-import { PermissionGuard } from '@/modules/rbac/permission.guard';
-import { RequirePermission } from '@/modules/rbac/require-permission.decorator';
 
 import { AuthService } from './auth.service';
 import type { AuthTokens } from './auth.service';
@@ -43,6 +43,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @Throttle(SENSITIVE_THROTTLE)
   async register(
     @Body(new ZodValidationPipe(registerSchema)) dto: RegisterDto,
     @Res({ passthrough: true }) res: FastifyReply,
@@ -59,6 +60,7 @@ export class AuthController {
   }
 
   @Post('register/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   async confirmRegistrationOtp(
     @Body(new ZodValidationPipe(confirmChallengeOtpSchema))
     dto: ConfirmChallengeOtpDto,
@@ -74,6 +76,7 @@ export class AuthController {
   }
 
   @Get('register/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   async confirmRegistrationLink(
     @Query(new ZodValidationPipe(confirmChallengeLinkSchema))
     query: ConfirmChallengeLinkDto,
@@ -89,6 +92,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle(SENSITIVE_THROTTLE)
   async login(
     @Body(new ZodValidationPipe(loginSchema)) dto: LoginDto,
     @Res({ passthrough: true }) res: FastifyReply,
@@ -105,6 +109,7 @@ export class AuthController {
   }
 
   @Post('login/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   async confirmLoginOtp(
     @Body(new ZodValidationPipe(confirmChallengeOtpSchema))
     dto: ConfirmChallengeOtpDto,
@@ -120,6 +125,7 @@ export class AuthController {
   }
 
   @Get('login/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   async confirmLoginLink(
     @Query(new ZodValidationPipe(confirmChallengeLinkSchema))
     query: ConfirmChallengeLinkDto,
@@ -157,13 +163,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: AuthenticatedRequest) {
     return req.user;
-  }
-
-  @Get('admin-ping')
-  @UseGuards(JwtAuthGuard, PermissionGuard)
-  @RequirePermission('rbac.demo')
-  adminPing() {
-    return { ok: true };
   }
 
   private setAuthCookies(res: FastifyReply, tokens: AuthTokens) {

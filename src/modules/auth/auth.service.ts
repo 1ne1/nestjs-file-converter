@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -43,6 +44,8 @@ interface PendingRegistrationMetadata {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly users: UsersService,
     private readonly jwt: JwtService,
@@ -62,6 +65,7 @@ export class AuthService {
 
     if (!this.config.get('REGISTRATION_EMAIL_CONFIRMATION_ENABLED')) {
       const user = await this.users.create(dto.email, passwordHash);
+      this.logger.log(`Registration succeeded for user ${user.id}`);
       return {
         requiresConfirmation: false,
         user,
@@ -119,6 +123,8 @@ export class AuthService {
       metadata.passwordHash,
     );
 
+    this.logger.log(`Registration confirmed for user ${user.id}`);
+
     return { user, tokens: this.issueTokens(user) };
   }
 
@@ -144,14 +150,17 @@ export class AuthService {
     const user = await this.users.findByEmail(dto.email);
 
     if (!user || !(await argon2.verify(user.passwordHash, dto.password))) {
+      this.logger.warn('Login failed: invalid credentials');
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (user.status === UserStatus.BLOCKED) {
+      this.logger.warn(`Login failed: account blocked (user ${user.id})`);
       throw new UnauthorizedException('Account is blocked');
     }
 
     if (!this.config.get('LOGIN_EMAIL_CONFIRMATION_ENABLED')) {
+      this.logger.log(`Login succeeded for user ${user.id}`);
       return {
         requiresConfirmation: false,
         user,
@@ -199,6 +208,8 @@ export class AuthService {
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException();
     }
+
+    this.logger.log(`Login confirmed for user ${user.id}`);
 
     return { user, tokens: this.issueTokens(user) };
   }

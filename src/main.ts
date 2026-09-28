@@ -10,6 +10,8 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 
+import { setupApiDocs } from '@/core/docs/setup-docs';
+
 import { AppModule } from './core/app/app.module';
 
 async function bootstrap() {
@@ -42,6 +44,10 @@ async function bootstrap() {
   await app.register(multipart, {
     limits: { fileSize: configService.get('UPLOAD_MAX_BYTES') },
   });
+
+  if (configService.get('NODE_ENV') !== 'production') {
+    setupApiDocs(app);
+  }
 
   const port = configService.get('PORT');
 

@@ -9,10 +9,12 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply } from 'fastify';
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
+import { SENSITIVE_THROTTLE } from '@/core/throttler/sensitive-throttle';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
 import {
   TransformationStatus,
@@ -34,6 +36,7 @@ export class TransformationHistoryController {
   ) {}
 
   @Get('history')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async list(
     @Req() req: AuthenticatedRequest,

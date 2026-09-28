@@ -13,6 +13,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply } from 'fastify';
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
@@ -25,6 +26,7 @@ import type {
   ConfirmChallengeLinkDto,
   ConfirmChallengeOtpDto,
 } from '@/core/challenge/dto/confirm-challenge.dto';
+import { SENSITIVE_THROTTLE } from '@/core/throttler/sensitive-throttle';
 import { ZodValidationPipe } from '@/core/validation/zod-validation.pipe';
 import { RbacService } from '@/modules/rbac/rbac.service';
 
@@ -51,6 +53,7 @@ export class UsersController {
   ) {}
 
   @Get()
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async list(
     @Req() req: AuthenticatedRequest,
@@ -125,6 +128,7 @@ export class UsersController {
   }
 
   @Post(':userId/email-change')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async initiateEmailChange(
     @Param('userId') userId: string,
@@ -145,6 +149,7 @@ export class UsersController {
   }
 
   @Post(':userId/email-change/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async confirmEmailChangeOtp(
     @Param('userId') userId: string,
@@ -166,6 +171,7 @@ export class UsersController {
   }
 
   @Get(':userId/email-change/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async confirmEmailChangeLink(
     @Param('userId') userId: string,
@@ -187,6 +193,7 @@ export class UsersController {
   }
 
   @Delete(':userId')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async remove(
     @Param('userId') userId: string,
@@ -216,6 +223,7 @@ export class UsersController {
   }
 
   @Post(':userId/delete/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async confirmDeleteOtp(
     @Param('userId') userId: string,
@@ -239,6 +247,7 @@ export class UsersController {
   }
 
   @Get(':userId/delete/confirm')
+  @Throttle(SENSITIVE_THROTTLE)
   @UseGuards(JwtAuthGuard)
   async confirmDeleteLink(
     @Param('userId') userId: string,

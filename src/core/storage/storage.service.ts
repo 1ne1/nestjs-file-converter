@@ -68,4 +68,8 @@ export class StorageService implements OnModuleInit {
       new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
     );
   }
+
+  async ping(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+  }
 }
