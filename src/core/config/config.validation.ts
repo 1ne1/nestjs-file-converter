@@ -69,6 +69,8 @@ export const configSchema = z.object({
   IMAGE_MAX_RASTER_HEIGHT: numberEnv(4096),
   IMAGE_DEFAULT_RASTER_WIDTH: numberEnv(800),
   IMAGE_DEFAULT_RASTER_HEIGHT: numberEnv(600),
+
+  HISTORY_RETENTION_DAYS: numberEnv(90),
 });
 
 export function validateConfig(config: Record<string, unknown>) {

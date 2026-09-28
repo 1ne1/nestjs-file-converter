@@ -8,14 +8,18 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply } from 'fastify';
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
 import {
   isFileTooLargeError,
   parseOptionalMultipartField,
   parseRequiredMultipartField,
 } from '@/core/http/multipart-field';
+import { TransformationType } from '@/generated/prisma/client';
+import { saveFlagSchema } from '@/modules/transformation-history/dto/save-flag.dto';
+import { TransformationHistoryService } from '@/modules/transformation-history/transformation-history.service';
 
 import {
   backgroundSchema,
@@ -35,7 +39,10 @@ import {
 
 @Controller('api/images')
 export class ImageTransformationController {
-  constructor(private readonly imageConversion: ImageConversionService) {}
+  constructor(
+    private readonly imageConversion: ImageConversionService,
+    private readonly history: TransformationHistoryService,
+  ) {}
 
   @Get('convert/formats')
   @UseGuards(JwtAuthGuard)
@@ -51,7 +58,7 @@ export class ImageTransformationController {
   @Post('convert')
   @UseGuards(JwtAuthGuard)
   async convert(
-    @Req() req: FastifyRequest,
+    @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const file = await req.file();
@@ -106,15 +113,54 @@ export class ImageTransformationController {
       backgroundSchema,
       'background must be a non-empty string',
     );
+    const save =
+      parseOptionalMultipartField(
+        file.fields.save,
+        saveFlagSchema,
+        'save must be a boolean',
+      ) ?? false;
 
-    const output = await this.imageConversion.convert({
-      buffer,
-      extFormat,
+    const startedAt = Date.now();
+    let output: Buffer;
+    try {
+      output = await this.imageConversion.convert({
+        buffer,
+        extFormat,
+        targetFormat,
+        quality,
+        width,
+        height,
+        background,
+      });
+    } catch (error) {
+      void this.history.record({
+        userId: req.user.id,
+        type: TransformationType.IMAGE,
+        sourceFormat: extFormat,
+        targetFormat,
+        status: 'ERROR',
+        fileSize: buffer.length,
+        durationMs: Date.now() - startedAt,
+        errorCode: errorCodeOf(error),
+      });
+      throw error;
+    }
+
+    void this.history.record({
+      userId: req.user.id,
+      type: TransformationType.IMAGE,
+      sourceFormat: extFormat,
       targetFormat,
-      quality,
-      width,
-      height,
-      background,
+      status: 'SUCCESS',
+      fileSize: buffer.length,
+      durationMs: Date.now() - startedAt,
+      save: save
+        ? {
+            buffer: output,
+            contentType: CONTENT_TYPES[targetFormat],
+            extension: EXTENSIONS[targetFormat],
+          }
+        : undefined,
     });
 
     res.header('Content-Type', CONTENT_TYPES[targetFormat]);
@@ -125,4 +171,8 @@ export class ImageTransformationController {
 
     return output;
   }
+}
+
+function errorCodeOf(error: unknown): string {
+  return error instanceof Error ? error.constructor.name : 'UnknownError';
 }

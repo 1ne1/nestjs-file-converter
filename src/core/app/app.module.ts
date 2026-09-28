@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { JwtAuthModule } from '@/core/auth/jwt-auth.module';
 import { ChallengeModule } from '@/core/challenge/challenge.module';
@@ -12,6 +13,7 @@ import { AuthModule } from '@/modules/auth/auth.module';
 import { ImageTransformationModule } from '@/modules/image-transformation/image-transformation.module';
 import { RbacModule } from '@/modules/rbac/rbac.module';
 import { TransformationModule } from '@/modules/transformation/transformation.module';
+import { TransformationHistoryModule } from '@/modules/transformation-history/transformation-history.module';
 import { UsersModule } from '@/modules/users/users.module';
 
 @Module({
@@ -23,10 +25,12 @@ import { UsersModule } from '@/modules/users/users.module';
     MailModule,
     ChallengeModule,
     ThrottlerModule,
+    ScheduleModule.forRoot(),
     RbacModule,
     JwtAuthModule,
     AuthModule,
     UsersModule,
+    TransformationHistoryModule,
     TransformationModule,
     ImageTransformationModule,
   ],

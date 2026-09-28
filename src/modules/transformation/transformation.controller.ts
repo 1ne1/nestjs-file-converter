@@ -8,14 +8,19 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply } from 'fastify';
 
 import { JwtAuthGuard } from '@/core/auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '@/core/auth/jwt-auth.guard';
 import { ConfigService } from '@/core/config/config.service';
 import {
   isFileTooLargeError,
+  parseOptionalMultipartField,
   parseRequiredMultipartField,
 } from '@/core/http/multipart-field';
+import { TransformationType } from '@/generated/prisma/client';
+import { saveFlagSchema } from '@/modules/transformation-history/dto/save-flag.dto';
+import { TransformationHistoryService } from '@/modules/transformation-history/transformation-history.service';
 
 import { targetFormatSchema } from './dto/convert.dto';
 import { FormatRegistryService } from './formats/format-registry.service';
@@ -44,6 +49,7 @@ export class TransformationController {
   constructor(
     private readonly registry: FormatRegistryService,
     private readonly config: ConfigService,
+    private readonly history: TransformationHistoryService,
   ) {}
 
   @Get('formats')
@@ -55,7 +61,7 @@ export class TransformationController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async convert(
-    @Req() req: FastifyRequest,
+    @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const file = await req.file();
@@ -84,6 +90,13 @@ export class TransformationController {
       'targetFormat must be one of: csv, json, xml, yaml',
     );
 
+    const save =
+      parseOptionalMultipartField(
+        file.fields.save,
+        saveFlagSchema,
+        'save must be a boolean',
+      ) ?? false;
+
     const maxSize = this.config.get(SIZE_LIMIT_CONFIG_KEYS[sourceFormat]);
     if (buffer.length > maxSize) {
       throw new PayloadTooLargeException(
@@ -91,7 +104,40 @@ export class TransformationController {
       );
     }
 
-    const output = this.registry.convert(sourceFormat, targetFormat, buffer);
+    const startedAt = Date.now();
+    let output: Buffer;
+    try {
+      output = this.registry.convert(sourceFormat, targetFormat, buffer);
+    } catch (error) {
+      void this.history.record({
+        userId: req.user.id,
+        type: TransformationType.FILE,
+        sourceFormat,
+        targetFormat,
+        status: 'ERROR',
+        fileSize: buffer.length,
+        durationMs: Date.now() - startedAt,
+        errorCode: errorCodeOf(error),
+      });
+      throw error;
+    }
+
+    void this.history.record({
+      userId: req.user.id,
+      type: TransformationType.FILE,
+      sourceFormat,
+      targetFormat,
+      status: 'SUCCESS',
+      fileSize: buffer.length,
+      durationMs: Date.now() - startedAt,
+      save: save
+        ? {
+            buffer: output,
+            contentType: CONTENT_TYPES[targetFormat],
+            extension: EXTENSIONS[targetFormat],
+          }
+        : undefined,
+    });
 
     res.header('Content-Type', CONTENT_TYPES[targetFormat]);
     res.header(
@@ -101,4 +147,8 @@ export class TransformationController {
 
     return output;
   }
+}
+
+function errorCodeOf(error: unknown): string {
+  return error instanceof Error ? error.constructor.name : 'UnknownError';
 }
