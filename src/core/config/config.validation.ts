@@ -55,6 +55,12 @@ export const configSchema = z.object({
     .enum(['OTP', 'MAGIC_LINK'])
     .optional()
     .transform((value) => value ?? 'OTP'),
+
+  UPLOAD_MAX_BYTES: numberEnv(10 * 1024 * 1024),
+  CONVERT_MAX_SIZE_CSV_BYTES: numberEnv(5 * 1024 * 1024),
+  CONVERT_MAX_SIZE_JSON_BYTES: numberEnv(5 * 1024 * 1024),
+  CONVERT_MAX_SIZE_XML_BYTES: numberEnv(5 * 1024 * 1024),
+  CONVERT_MAX_SIZE_YAML_BYTES: numberEnv(5 * 1024 * 1024),
 });
 
 export function validateConfig(config: Record<string, unknown>) {

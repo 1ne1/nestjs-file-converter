@@ -2,6 +2,7 @@ import { ConfigService } from '@/core/config/config.service';
 
 import compression from '@fastify/compress';
 import fastifyCookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 
 import { NestFactory } from '@nestjs/core';
 import {
@@ -36,6 +37,10 @@ async function bootstrap() {
 
   await app.register(fastifyCookie, {
     secret: cookieSecret,
+  });
+
+  await app.register(multipart, {
+    limits: { fileSize: configService.get('UPLOAD_MAX_BYTES') },
   });
 
   const port = configService.get('PORT');
