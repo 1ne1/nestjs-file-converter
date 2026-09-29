@@ -30,6 +30,7 @@ import {
   EXTENSIONS,
   FileFormat,
 } from './formats/format.types';
+import { WorkerConversionService } from './formats/worker-conversion.service';
 
 type SizeLimitConfigKey =
   | 'CONVERT_MAX_SIZE_CSV_BYTES'
@@ -48,6 +49,7 @@ const SIZE_LIMIT_CONFIG_KEYS: Record<FileFormat, SizeLimitConfigKey> = {
 export class TransformationController {
   constructor(
     private readonly registry: FormatRegistryService,
+    private readonly conversion: WorkerConversionService,
     private readonly config: ConfigService,
     private readonly history: TransformationHistoryService,
   ) {}
@@ -107,7 +109,11 @@ export class TransformationController {
     const startedAt = Date.now();
     let output: Buffer;
     try {
-      output = this.registry.convert(sourceFormat, targetFormat, buffer);
+      output = await this.conversion.convert(
+        sourceFormat,
+        targetFormat,
+        buffer,
+      );
     } catch (error) {
       void this.history.record({
         userId: req.user.id,
@@ -150,5 +156,8 @@ export class TransformationController {
 }
 
 function errorCodeOf(error: unknown): string {
+  if (error && typeof error === 'object' && 'errorCode' in error) {
+    return String((error as { errorCode: unknown }).errorCode);
+  }
   return error instanceof Error ? error.constructor.name : 'UnknownError';
 }

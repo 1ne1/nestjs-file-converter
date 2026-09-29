@@ -40,20 +40,22 @@ function buildReply() {
 
 describe('TransformationController', () => {
   let controller: TransformationController;
-  let registry: { listFormats: jest.Mock; convert: jest.Mock };
+  let registry: { listFormats: jest.Mock };
+  let conversion: { convert: jest.Mock };
   let config: { get: jest.Mock };
   let history: { record: jest.Mock };
 
   beforeEach(() => {
-    registry = {
-      listFormats: jest.fn(),
-      convert: jest.fn().mockReturnValue(Buffer.from('json-output')),
+    registry = { listFormats: jest.fn() };
+    conversion = {
+      convert: jest.fn().mockResolvedValue(Buffer.from('json-output')),
     };
     config = { get: jest.fn().mockReturnValue(1024 * 1024) };
     history = { record: jest.fn().mockResolvedValue(undefined) };
 
     controller = new TransformationController(
       registry as never,
+      conversion as never,
       config as never,
       history as never,
     );
@@ -82,7 +84,7 @@ describe('TransformationController', () => {
       const output = await controller.convert(req as never, res as never);
 
       expect(output).toEqual(Buffer.from('json-output'));
-      expect(registry.convert).toHaveBeenCalledWith(
+      expect(conversion.convert).toHaveBeenCalledWith(
         'csv',
         'json',
         Buffer.from('csv-content'),
@@ -164,14 +166,12 @@ describe('TransformationController', () => {
       await expect(
         controller.convert(req as never, res as never),
       ).rejects.toBeInstanceOf(PayloadTooLargeException);
-      expect(registry.convert).not.toHaveBeenCalled();
+      expect(conversion.convert).not.toHaveBeenCalled();
     });
 
     it('records an ERROR history entry and rethrows when conversion fails', async () => {
       const conversionError = new BadRequestException('Invalid CSV syntax');
-      registry.convert.mockImplementation(() => {
-        throw conversionError;
-      });
+      conversion.convert.mockRejectedValue(conversionError);
       const req = buildRequest();
       const res = buildReply();
 
