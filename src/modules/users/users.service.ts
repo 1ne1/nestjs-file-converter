@@ -184,16 +184,18 @@ export class UsersService {
   async remove(id: string): Promise<void> {
     const passwordHash = await argon2.hash(randomUUID());
 
-    await this.prisma.user.update({
-      where: { id },
-      data: {
-        email: `deleted-${id}@deleted.local`,
-        name: null,
-        passwordHash,
-        status: UserStatus.DELETED,
-      },
-    });
-    await this.prisma.userRole.deleteMany({ where: { userId: id } });
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id },
+        data: {
+          email: `deleted-${id}@deleted.local`,
+          name: null,
+          passwordHash,
+          status: UserStatus.DELETED,
+        },
+      }),
+      this.prisma.userRole.deleteMany({ where: { userId: id } }),
+    ]);
     this.logger.log(`Deleted (anonymized) user ${id}`);
   }
 
@@ -227,10 +229,17 @@ export class UsersService {
         : {}),
     };
 
-    let users: User[];
+    let users: ListItem[];
     try {
       users = await this.prisma.user.findMany({
         where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          status: true,
+          createdAt: true,
+        },
         orderBy: { [sort]: order },
         take: limit + 1,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -249,18 +258,8 @@ export class UsersService {
     const items = hasMore ? users.slice(0, limit) : users;
 
     return {
-      items: items.map((user) => this.toListItem(user)),
+      items,
       nextCursor: hasMore ? items[items.length - 1].id : null,
-    };
-  }
-
-  private toListItem(user: User): ListItem {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      status: user.status,
-      createdAt: user.createdAt,
     };
   }
 }

@@ -44,6 +44,7 @@ describe('UsersService', () => {
       findMany: jest.Mock;
     };
     userRole: { deleteMany: jest.Mock };
+    $transaction: jest.Mock;
   };
   let challenges: { create: jest.Mock; verify: jest.Mock };
   let mail: { sendMail: jest.Mock };
@@ -68,6 +69,7 @@ describe('UsersService', () => {
         findMany: jest.fn(),
       },
       userRole: { deleteMany: jest.fn() },
+      $transaction: jest.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
     challenges = { create: jest.fn(), verify: jest.fn() };
     mail = { sendMail: jest.fn() };
@@ -340,6 +342,13 @@ describe('UsersService', () => {
             { email: { contains: 'ali', mode: 'insensitive' } },
             { name: { contains: 'ali', mode: 'insensitive' } },
           ],
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          status: true,
+          createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
         take: 3,
