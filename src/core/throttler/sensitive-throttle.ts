@@ -1,3 +1,6 @@
 export const SENSITIVE_THROTTLE = {
-  default: { limit: 5, ttl: 60_000 },
+  default: {
+    limit: Number(process.env.SENSITIVE_THROTTLE_LIMIT ?? 5),
+    ttl: Number(process.env.SENSITIVE_THROTTLE_TTL_MS ?? 60_000),
+  },
 };

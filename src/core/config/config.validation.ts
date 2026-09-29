@@ -24,6 +24,18 @@ export const configSchema = z.object({
 
   THROTTLE_GLOBAL_TTL: numberEnv(10000),
   THROTTLE_GLOBAL_LIMIT: numberEnv(10),
+  SENSITIVE_THROTTLE_LIMIT: numberEnv(5),
+  SENSITIVE_THROTTLE_TTL_MS: numberEnv(60_000),
+
+  CORS_ALLOWED_ORIGINS: z
+    .string()
+    .min(1)
+    .transform((value) =>
+      value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ),
 
   DATABASE_URL: z.url(),
 

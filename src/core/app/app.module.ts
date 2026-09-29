@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 
+import { AllExceptionsFilter } from './all-exceptions.filter';
 import { JwtAuthModule } from '@/core/auth/jwt-auth.module';
 import { ChallengeModule } from '@/core/challenge/challenge.module';
 import { ConfigModule } from '@/core/config/config.module';
@@ -34,5 +36,6 @@ import { UsersModule } from '@/modules/users/users.module';
     TransformationModule,
     ImageTransformationModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: AllExceptionsFilter }],
 })
 export class AppModule {}

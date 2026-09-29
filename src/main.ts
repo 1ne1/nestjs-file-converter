@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 import { ConfigService } from '@/core/config/config.service';
 
 import compression from '@fastify/compress';
@@ -22,19 +24,16 @@ async function bootstrap() {
 
   await app.register(compression);
 
+  const configService = app.get(ConfigService);
+
   app.enableCors({
-    origin: [
-      'http://localhost:5174',
-      'http://localhost:4200',
-      'http://localhost:8080',
-    ],
+    origin: configService.get('CORS_ALLOWED_ORIGINS'),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
 
-  const configService = app.get(ConfigService);
   const cookieSecret = configService.get('COOKIE_SECRET');
 
   await app.register(fastifyCookie, {
