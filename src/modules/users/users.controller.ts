@@ -42,8 +42,8 @@ const READ_PERMISSION = 'users.read';
 const UPDATE_PERMISSION = 'users.update';
 const LIST_PERMISSION = 'users.list';
 const DELETE_PERMISSION = 'users.delete';
-const SELF_UPDATABLE_FIELDS = ['name'] as const;
-const ADMIN_UPDATABLE_FIELDS = ['name', 'email', 'status'] as const;
+const SELF_UPDATABLE_FIELDS = ['name', 'photo'] as const;
+const ADMIN_UPDATABLE_FIELDS = ['name', 'email', 'photo', 'status'] as const;
 
 @Controller('users')
 export class UsersController {

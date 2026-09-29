@@ -22,6 +22,7 @@ import {
 export interface UpdateUserFields {
   name?: string;
   email?: string;
+  photo?: string | null;
   status?: UserStatus;
 }
 
@@ -29,6 +30,7 @@ export interface SelfProfile {
   id: string;
   email: string;
   name: string | null;
+  photo: string | null;
   status: UserStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +39,7 @@ export interface SelfProfile {
 export interface PublicProfile {
   id: string;
   email: string;
+  photo: string | null;
   status: UserStatus;
 }
 
@@ -44,6 +47,7 @@ export interface ListItem {
   id: string;
   email: string;
   name: string | null;
+  photo: string | null;
   status: UserStatus;
   createdAt: Date;
 }
@@ -204,6 +208,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       name: user.name,
+      photo: user.photo,
       status: user.status,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -211,7 +216,12 @@ export class UsersService {
   }
 
   toPublicProfile(user: User): PublicProfile {
-    return { id: user.id, email: user.email, status: user.status };
+    return {
+      id: user.id,
+      email: user.email,
+      photo: user.photo,
+      status: user.status,
+    };
   }
 
   async list(params: ListUsersParams): Promise<ListUsersResult> {
@@ -237,6 +247,7 @@ export class UsersService {
           id: true,
           email: true,
           name: true,
+          photo: true,
           status: true,
           createdAt: true,
         },

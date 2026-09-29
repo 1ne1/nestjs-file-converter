@@ -54,6 +54,7 @@ describe('UsersService', () => {
     email: 'alice@example.com',
     passwordHash: 'hashed',
     name: null,
+    photo: null,
     status: UserStatus.ACTIVE,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-02T00:00:00.000Z'),
@@ -305,18 +306,20 @@ describe('UsersService', () => {
         id: 'user-1',
         email: 'alice@example.com',
         name: 'Alice',
+        photo: null,
         status: UserStatus.ACTIVE,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       });
     });
 
-    it('shapes the public profile with only id/email/status', () => {
+    it('shapes the public profile with only id/email/photo/status', () => {
       const user = buildUser({ name: 'Alice' });
 
       expect(service.toPublicProfile(user as any)).toEqual({
         id: 'user-1',
         email: 'alice@example.com',
+        photo: null,
         status: UserStatus.ACTIVE,
       });
     });
@@ -347,6 +350,7 @@ describe('UsersService', () => {
           id: true,
           email: true,
           name: true,
+          photo: true,
           status: true,
           createdAt: true,
         },
