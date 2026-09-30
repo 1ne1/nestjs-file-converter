@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
 
       - run: npm run prisma:generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
 
       - name: Lint
         run: npx eslint "{src,apps,libs,test}/**/*.ts"
